@@ -1,0 +1,51 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model SearchHistory {
+  id        String   @id @default(uuid())
+  query     String
+  placeName String
+  address   String?
+  latitude  Float
+  longitude Float
+  category  String?  @default("place")
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+model RouteHistory {
+  id            String   @id @default(uuid())
+  originName    String
+  originLat     Float
+  originLng     Float
+  destName      String
+  destLat       Float
+  destLng       Float
+  distanceKm    Float
+  durationMin   Float
+  travelMode    String   @default("DRIVING")
+  waypointsJson String?
+  createdAt     DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+model SavedPlace {
+  id        String   @id @default(uuid())
+  name      String
+  label     String   @default("Favorite") // "Home", "Work", "University", "Favorite"
+  address   String
+  latitude  Float
+  longitude Float
+  icon      String?  @default("map-pin")
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
