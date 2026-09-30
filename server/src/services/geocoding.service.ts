@@ -10,8 +10,9 @@ export interface GeocodeResult {
 }
 
 export class GeocodingService {
-  private static googleApiKey = process.env.GOOGLE_MAPS_API_KEY || '';
-
+ private static getGoogleApiKey(): string {
+  return process.env.GOOGLE_MAPS_API_KEY || '';
+}
   static async searchPlaces(query: string): Promise<GeocodeResult[]> {
     if (!query || query.trim().length === 0) {
       return [];
@@ -20,9 +21,9 @@ export class GeocodingService {
     const cleanQuery = query.trim();
 
     // 1. Try Google Geocoding if API key is provided
-    if (this.googleApiKey) {
+    if (this.getGoogleApiKey()) {
       try {
-        const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(cleanQuery)}&key=${this.googleApiKey}`;
+        const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(cleanQuery)}&key=${this.getGoogleApiKey()}`;
         const res = await axios.get(url);
         if (res.data.status === 'OK' && res.data.results?.length) {
           return res.data.results.map((r: any) => ({
@@ -63,9 +64,9 @@ export class GeocodingService {
   }
 
   static async reverseGeocode(lat: number, lng: number): Promise<string> {
-    if (this.googleApiKey) {
+    if (this.getGoogleApiKey()) {
       try {
-        const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${this.googleApiKey}`;
+        const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${this.getGoogleApiKey()}`;
         const res = await axios.get(url);
         if (res.data.status === 'OK' && res.data.results?.[0]) {
           return res.data.results[0].formatted_address;

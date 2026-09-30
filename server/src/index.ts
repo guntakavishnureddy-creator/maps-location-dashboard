@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import { PrismaClient } from '@prisma/client';
 import historyRoutes from './routes/history.routes.js';
 import savedPlacesRoutes from './routes/savedPlaces.routes.js';
 import placesRoutes from './routes/places.routes.js';
@@ -10,6 +11,7 @@ import { errorHandler } from './middleware/errorHandler.js';
 dotenv.config();
 
 const app = express();
+const prisma = new PrismaClient();
 const PORT = process.env.PORT || 5000;
 
 // CORS configuration
@@ -22,31 +24,43 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps, curl) or allowed origins
-      if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV !== 'production') {
+      if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
-        callback(null, true); // Permissive in dev/testing
+        callback(new Error('Not allowed by CORS'));
       }
     },
     credentials: true,
   })
 );
-
 app.use(express.json());
 
 // Health check endpoint
-app.get('/api/health', (_req, res) => {
-  res.json({
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-    service: 'maps-dashboard-backend',
-    version: '1.0.0',
-    database: 'connected',
-    googleMapsConfigured: Boolean(process.env.GOOGLE_MAPS_API_KEY),
-  });
-});
+app.get('/api/health', async (_req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
 
+    res.json({
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      service: 'maps-dashboard-backend',
+      version: '1.0.0',
+      database: 'connected',
+      googleMapsConfigured: Boolean(process.env.GOOGLE_MAPS_API_KEY),
+    });
+  } catch (error) {
+    console.error('[Health Check] Database connection failed:', error);
+
+    res.status(503).json({
+      status: 'unhealthy',
+      timestamp: new Date().toISOString(),
+      service: 'maps-dashboard-backend',
+      version: '1.0.0',
+      database: 'disconnected',
+      googleMapsConfigured: Boolean(process.env.GOOGLE_MAPS_API_KEY),
+    });
+  }
+});
 // Public client config
 app.get('/api/config', (_req, res) => {
   res.json({

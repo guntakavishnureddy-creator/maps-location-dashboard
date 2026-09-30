@@ -15,18 +15,19 @@ export interface RouteResult {
 }
 
 export class MapsService {
-  private static googleApiKey = process.env.GOOGLE_MAPS_API_KEY || '';
-
+  private static getGoogleApiKey(): string {
+  return process.env.GOOGLE_MAPS_API_KEY || '';
+}
   static async calculateRoute(
     origin: { lat: number; lng: number },
     destination: { lat: number; lng: number },
     mode: 'DRIVING' | 'WALKING' | 'BICYCLING' | 'TRANSIT' = 'DRIVING'
   ): Promise<RouteResult> {
     // 1. If Google API key is configured, try Google Directions API
-    if (this.googleApiKey) {
+    if (this.getGoogleApiKey()) {
       try {
         const googleMode = mode.toLowerCase();
-        const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${origin.lat},${origin.lng}&destination=${destination.lat},${destination.lng}&mode=${googleMode}&key=${this.googleApiKey}`;
+        const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${origin.lat},${origin.lng}&destination=${destination.lat},${destination.lng}&mode=${googleMode}&key=${this.getGoogleApiKey()}`;
         const response = await axios.get(url);
 
         if (response.data.status === 'OK' && response.data.routes?.length) {

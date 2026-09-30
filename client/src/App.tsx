@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Navbar } from './components/Navbar';
 import { MapView } from './components/MapView';
@@ -12,13 +13,22 @@ import { SettingsModal } from './components/SettingsModal';
 import { useGeolocation } from './hooks/useGeolocation';
 import { useMapRouting } from './hooks/useMapRouting';
 import { useHistory } from './hooks/useHistory';
-import { PlaceResult, MapEngine, MapTheme, Coordinates, SearchHistoryItem, RouteHistoryItem } from './types';
+import {
+  PlaceResult,
+  MapEngine,
+  MapTheme,
+  Coordinates,
+  RouteHistoryItem,
+} from './types';
 import { GoogleMapsService } from './services/googleMaps';
 import { OsmService } from './services/osmService';
 
 export const App: React.FC = () => {
   // Map Engine & API Key
-  const [googleKey, setGoogleKey] = useState<string>(() => GoogleMapsService.getApiKey());
+  const [googleKey, setGoogleKey] = useState<string>(() =>
+    GoogleMapsService.getApiKey()
+  );
+
   const [mapEngine, setMapEngine] = useState<MapEngine>(() => {
     const key = GoogleMapsService.getApiKey();
     return key ? 'google' : 'leaflet';
@@ -26,9 +36,15 @@ export const App: React.FC = () => {
 
   // Dark Mode & Theme
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
-    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    return (
+      window.matchMedia &&
+      window.matchMedia('(prefers-color-scheme: dark)').matches
+    );
   });
-  const [theme, setTheme] = useState<MapTheme>(() => (isDarkMode ? 'dark' : 'light'));
+
+  const [theme, setTheme] = useState<MapTheme>(() =>
+    isDarkMode ? 'dark' : 'light'
+  );
 
   useEffect(() => {
     if (isDarkMode) {
@@ -50,7 +66,8 @@ export const App: React.FC = () => {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isSavedPlacesOpen, setIsSavedPlacesOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isPermissionBannerDismissed, setIsPermissionBannerDismissed] = useState(false);
+  const [isPermissionBannerDismissed, setIsPermissionBannerDismissed] =
+    useState(false);
 
   // Map Controls Ref
   const mapControlsRef = useRef<{
@@ -80,6 +97,7 @@ export const App: React.FC = () => {
     deleteSavedPlace,
   } = useHistory();
 
+  // Save calculated routes to history
   const handleRouteCalculated = useCallback(
     (calculatedRoute: any) => {
       if (calculatedRoute) {
@@ -98,6 +116,30 @@ export const App: React.FC = () => {
     },
     [addRoute]
   );
+
+  // Map Click Handler
+  const handleMapClick = async (clickedCoords: Coordinates) => {
+    try {
+      const address = await OsmService.reverseGeocode(
+        clickedCoords.lat,
+        clickedCoords.lng
+      );
+
+      const firstPart = address.split(',')[0];
+
+      setDestination({
+        coords: clickedCoords,
+        name:
+          firstPart ||
+          `Point (${clickedCoords.lat.toFixed(4)}, ${clickedCoords.lng.toFixed(4)})`,
+      });
+    } catch {
+      setDestination({
+        coords: clickedCoords,
+        name: `Location (${clickedCoords.lat.toFixed(4)}, ${clickedCoords.lng.toFixed(4)})`,
+      });
+    }
+  };
 
   const {
     origin,
@@ -128,7 +170,11 @@ export const App: React.FC = () => {
 
   // Handle selecting a destination from Search, Preset Chips, or History
   const handleSelectDestination = (place: PlaceResult) => {
-    const coords: Coordinates = { lat: place.lat, lng: place.lng };
+    const coords: Coordinates = {
+      lat: place.lat,
+      lng: place.lng,
+    };
+
     setDestination({
       coords,
       name: place.name,
@@ -150,84 +196,95 @@ export const App: React.FC = () => {
     }
   };
 
-  // Handle selecting a custom origin (PDF Bonus: route between arbitrary origin & destination)
+  // Handle selecting a custom origin
   const handleSelectOrigin = (place: PlaceResult) => {
-    const coords: Coordinates = { lat: place.lat, lng: place.lng };
+    const coords: Coordinates = {
+      lat: place.lat,
+      lng: place.lng,
+    };
+
     setOrigin({
       coords,
       name: place.name,
     });
+
     if (mapControlsRef.current) {
       mapControlsRef.current.panTo(coords);
-    }
-  };
-
-  // Map Click Handler: click on map to set destination
-  const handleMapClick = async (clickedCoords: Coordinates) => {
-    try {
-      const address = await OsmService.reverseGeocode(clickedCoords.lat, clickedCoords.lng);
-      setDestination({
-        coords: clickedCoords,
-        name: address.split(',')[0] || `Point (${clickedCoords.lat.toFixed(4)}, ${clickedCoords.lng.toFixed(4)})`,
-      });
-    } catch {
-      setDestination({
-        coords: clickedCoords,
-        name: `Location (${clickedCoords.lat.toFixed(4)}, ${clickedCoords.lng.toFixed(4)})`,
-      });
     }
   };
 
   // "My Location" button handler
   const handleRecenterLocation = async () => {
     let target = userCoords;
+
     if (!target) {
       target = await requestLocation();
     }
+
     if (target && mapControlsRef.current) {
       mapControlsRef.current.panTo(target);
+
       if (!origin) {
-        setOrigin({ coords: target, name: 'My Current Location' });
+        setOrigin({
+          coords: target,
+          name: 'My Current Location',
+        });
       }
     }
   };
 
-  // Show Route Action (PDF Requirement Section 4 Step 5 & Section 7)
+  // Show Route Action
   const handleShowRoute = () => {
     calculateRoute(mapEngine);
   };
 
   // Replay a route from history
   const handleReplayRoute = (histRoute: RouteHistoryItem) => {
-    setOrigin({
-      coords: { lat: histRoute.originLat, lng: histRoute.originLng },
+    const replayOrigin = {
+      coords: {
+        lat: histRoute.originLat,
+        lng: histRoute.originLng,
+      },
       name: histRoute.originName,
-    });
-    setDestination({
-      coords: { lat: histRoute.destLat, lng: histRoute.destLng },
+    };
+
+    const replayDestination = {
+      coords: {
+        lat: histRoute.destLat,
+        lng: histRoute.destLng,
+      },
       name: histRoute.destName,
-    });
-    setTravelMode(histRoute.travelMode as any);
-    calculateRoute(mapEngine, {
-      coords: { lat: histRoute.originLat, lng: histRoute.originLng },
-      name: histRoute.originName,
-    }, {
-      coords: { lat: histRoute.destLat, lng: histRoute.destLng },
-      name: histRoute.destName,
-    }, histRoute.travelMode as any);
+    };
+
+    const replayTravelMode = histRoute.travelMode as any;
+
+    setOrigin(replayOrigin);
+    setDestination(replayDestination);
+    setTravelMode(replayTravelMode);
+
+    calculateRoute(
+      mapEngine,
+      replayOrigin,
+      replayDestination,
+      replayTravelMode
+    );
   };
 
+  // Save Google Maps API key
   const handleKeySaved = (newKey: string) => {
     setGoogleKey(newKey);
+
     if (newKey) {
       setMapEngine('google');
     }
   };
 
   const isCurrentDestinationSaved = Boolean(
-    destination && savedPlaces.some((p) => p.name === destination.name)
+    destination &&
+      savedPlaces.some((place) => place.name === destination.name)
   );
 
+  // Save current destination as favorite
   const handleSaveFavoriteDestination = () => {
     if (destination) {
       addSavedPlace({
@@ -276,7 +333,7 @@ export const App: React.FC = () => {
       </main>
 
       {/* Floating Top Search Area */}
-      <div className="absolute top-18 left-4 right-4 sm:left-6 sm:right-auto sm:w-[420px] z-20 flex flex-col space-y-2 pointer-events-none">
+      <div className="absolute top-20 left-4 right-4 sm:left-6 sm:right-auto sm:w-[420px] z-[1000] flex flex-col gap-2 pointer-events-none">
         <div className="pointer-events-auto">
           <SearchBar
             mapEngine={mapEngine}
@@ -303,7 +360,7 @@ export const App: React.FC = () => {
         isDismissed={isPermissionBannerDismissed}
       />
 
-      {/* Floating Bottom Route Info Card (Visible when destination is selected or route is calculated) */}
+      {/* Floating Bottom Route Info Card */}
       {destination && (
         <RouteInfoCard
           originName={origin?.name || 'My Location'}
@@ -311,6 +368,7 @@ export const App: React.FC = () => {
           travelMode={travelMode}
           setTravelMode={(mode) => {
             setTravelMode(mode);
+
             if (routeInfo) {
               calculateRoute(mapEngine, undefined, undefined, mode);
             }
@@ -331,7 +389,7 @@ export const App: React.FC = () => {
         />
       )}
 
-      {/* Map Control Buttons (Recenter, Zoom, Theme, Fit) */}
+      {/* Map Control Buttons */}
       <MapControls
         onRecenterLocation={handleRecenterLocation}
         isLocationLoading={geoLoading}
@@ -387,3 +445,5 @@ export const App: React.FC = () => {
 };
 
 export default App;
+
+
