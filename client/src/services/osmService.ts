@@ -46,8 +46,22 @@ export class OsmService {
         };
       });
     } catch (err: any) {
-      console.error('OSM Search Error:', err);
-      return [];
+      console.warn('Direct OSM Search failed, falling back to backend API:', err.message);
+      try {
+        const backendUrl = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'}/places/search?q=${encodeURIComponent(query.trim())}`;
+        const res = await axios.get(backendUrl, { timeout: 5000 });
+        return (res.data || []).map((item: any) => ({
+          id: item.placeId || String(Date.now()),
+          name: item.name || item.formattedAddress?.split(',')[0] || query,
+          formattedAddress: item.formattedAddress || item.name,
+          lat: item.lat,
+          lng: item.lng,
+          category: item.category || 'place',
+        }));
+      } catch (backErr) {
+        console.error('Backend search fallback failed:', backErr);
+        return [];
+      }
     }
   }
 

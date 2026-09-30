@@ -103,6 +103,20 @@ export const SearchBar: React.FC<SearchBarProps> = ({
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (results.length > 0) {
+        handleSelect(results[0]);
+      } else if (query.trim()) {
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+        performSearch(query);
+      }
+    } else if (e.key === 'Escape') {
+      setIsOpen(false);
+    }
+  };
+
   const handleSelect = (place: PlaceResult) => {
     setQuery(place.name);
     setIsOpen(false);
@@ -158,6 +172,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
           type="text"
           value={query}
           onChange={handleInputChange}
+          onKeyDown={handleKeyDown}
           onFocus={() => setIsOpen(true)}
           placeholder={
             searchTarget === 'destination'
